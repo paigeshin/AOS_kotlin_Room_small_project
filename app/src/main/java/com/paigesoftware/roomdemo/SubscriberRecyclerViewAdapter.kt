@@ -8,7 +8,8 @@ import com.paigesoftware.roomdemo.databinding.ListItemBinding
 import com.paigesoftware.roomdemo.db.Subscriber
 
 class SubscriberRecyclerViewAdapter(
-    private val subscriberList: List<Subscriber>
+    private val subscriberList: List<Subscriber>,
+    private val clickListener: (Subscriber) -> Unit
     ): RecyclerView.Adapter<SubscriberRecyclerViewAdapter.SubscriberViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SubscriberViewHolder {
         val layoutInflater = LayoutInflater.from(parent.context)
@@ -17,18 +18,23 @@ class SubscriberRecyclerViewAdapter(
     }
 
     override fun onBindViewHolder(holder: SubscriberViewHolder, position: Int) {
-        holder.bind(subscriberList[position])
+        holder.bind(subscriberList[position], clickListener)
     }
 
     override fun getItemCount(): Int {
         return subscriberList.size
     }
 
+    //view가 아니라 binding을 넘겨준다.
     class SubscriberViewHolder(val binding: ListItemBinding): RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(subscriber: Subscriber) {
+        fun bind(subscriber: Subscriber, clickListener: (Subscriber) -> Unit) {
+//        fun bind(subscriber: Subscriber) {
             binding.nameTextView.text = subscriber.name
             binding.emailTextView.text = subscriber.email
+            binding.listItemLayout.setOnClickListener {
+                clickListener(subscriber)
+            }
         }
 
     }

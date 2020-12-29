@@ -446,3 +446,88 @@ class SubscriberRecyclerViewAdapter(
 
 }
 ```
+
+# ClickListener as function parameter
+
+- MainActivity
+
+```kotlin
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var subscriberViewModel: SubscriberViewModel
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
+        val dao: SubscriberDAO = SubscriberDatabase.getInstance(application).subscriberDAO
+        val repository = SubscriberRepository(dao)
+        val factory = SubscriberViewModelFactory(repository)
+        subscriberViewModel = ViewModelProvider(this, factory).get(SubscriberViewModel::class.java)
+        binding.subscriberViewModel = subscriberViewModel
+        binding.lifecycleOwner = this  //for LiveData Binding
+
+        initRecyclerView()
+    }
+
+    private fun initRecyclerView() {
+        binding.subscriberRecyclerView.layoutManager = LinearLayoutManager(this)
+        displaySubscribersList()
+    }
+
+    private fun displaySubscribersList() {
+        subscriberViewModel.subscribers.observe(this, Observer {
+            Log.i("MYTAG", it.toString())
+            binding.subscriberRecyclerView.adapter = SubscriberRecyclerViewAdapter(it, { selectedItem: Subscriber -> listItemClicked(selectedItem)})/** Click Event **/
+        })
+    }
+
+    /** Click Event **/
+    private fun listItemClicked(subscriber: Subscriber) {
+        Toast.makeText(this, "selected name is ${subscriber.name}", Toast.LENGTH_LONG).show()
+        subscriberViewModel.initUpdateAndDelete(subscriber)
+    }
+
+}
+```
+
+- Adapter
+
+```kotlin
+class SubscriberRecyclerViewAdapter(
+    private val subscriberList: List<Subscriber>,
+    private val clickListener: (Subscriber) -> Unit /** Click Event **/
+    ): RecyclerView.Adapter<SubscriberRecyclerViewAdapter.SubscriberViewHolder>() {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SubscriberViewHolder {
+        val layoutInflater = LayoutInflater.from(parent.context)
+        val binding: ListItemBinding = DataBindingUtil.inflate(layoutInflater, R.layout.list_item, parent, false)
+        return SubscriberViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: SubscriberViewHolder, position: Int) {
+        holder.bind(subscriberList[position], clickListener)
+    }
+
+    override fun getItemCount(): Int {
+        return subscriberList.size
+    }
+
+    //view가 아니라 binding을 넘겨준다.
+    class SubscriberViewHolder(val binding: ListItemBinding): RecyclerView.ViewHolder(binding.root) {
+		
+				/** Click Event **/
+        fun bind(subscriber: Subscriber, clickListener: (Subscriber) -> Unit) {
+//        fun bind(subscriber: Subscriber) {
+            binding.nameTextView.text = subscriber.name
+            binding.emailTextView.text = subscriber.email
+            binding.listItemLayout.setOnClickListener {
+							/** Click Event **/
+                clickListener(subscriber)
+            }
+        }
+
+    }
+
+}
+```
