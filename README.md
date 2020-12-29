@@ -531,3 +531,215 @@ class SubscriberRecyclerViewAdapter(
 
 }
 ```
+
+# Use SingleLiveEvent
+
+### BoilderPlateCode
+
+```kotlin
+package com.paigesoftware.roomdemo
+
+/**
+ * Used as a wrapper for data that is exposed via a LiveData that represents an event.
+ */
+open class Event<out T>(private val content: T) {
+
+    var hasBeenHandled = false
+        private set // Allow external read but not write
+
+    /**
+     * Returns the content and prevents its use again.
+     */
+    fun getContentIfNotHandled(): T? {
+        return if (hasBeenHandled) {
+            null
+        } else {
+            hasBeenHandled = true
+            content
+        }
+    }
+
+    /**
+     * Returns the content, even if it's already been handled.
+     */
+    fun peekContent(): T = content
+}
+```
+
+### Apply it into `ViewModel`
+
+```kotlin
+package com.paigesoftware.roomdemo.db
+
+import androidx.databinding.Bindable
+import androidx.databinding.Observable
+import androidx.lifecycle.*
+import com.paigesoftware.roomdemo.Event
+import kotlinx.coroutines.launch
+
+class SubscriberViewModel(private val repository: SubscriberRepository) : ViewModel(),Observable {
+
+    val subscribers = repository.subscribers
+    private var isUpdateOrDelete = false
+    private lateinit var subscriberToUpdateOrDelete : Subscriber
+
+    @Bindable
+    val inputName = MutableLiveData<String>()
+    @Bindable
+    val inputEmail = MutableLiveData<String>()
+    @Bindable
+    val saveOrUpdateButtonText = MutableLiveData<String>()
+    @Bindable
+    val clearAllOrDeleteButtonText = MutableLiveData<String>()
+
+    /** Treat LiveData as an Event **/
+    private val statusMessage = MutableLiveData<Event<String>>()
+    val message: LiveData<Event<String>>
+    get() = statusMessage
+
+    init {
+        saveOrUpdateButtonText.value = "Save"
+        clearAllOrDeleteButtonText.value = "Clear All"
+    }
+
+    fun saveOrUpdate(){
+        if(isUpdateOrDelete){
+            subscriberToUpdateOrDelete.name = inputName.value!!
+            subscriberToUpdateOrDelete.email = inputEmail.value!!
+            update(subscriberToUpdateOrDelete)
+        }else {
+            val name = inputName.value!!
+            val email = inputEmail.value!!
+            insert(Subscriber(0, name, email))
+            inputName.value = null
+            inputEmail.value = null
+        }
+    }
+
+    fun clearAllOrDelete(){
+        if(isUpdateOrDelete){
+            delete(subscriberToUpdateOrDelete)
+        }else{
+            clearAll()
+        }
+
+    }
+
+    fun insert(subscriber: Subscriber)= viewModelScope.launch {
+        repository.insert(subscriber)
+        /** Treat LiveData as an Event **/
+        statusMessage.value = Event("Subscriber Inserted Successfully")
+    }
+
+    fun update(subscriber: Subscriber) = viewModelScope.launch {
+        repository.update(subscriber)
+        inputName.value = null
+        inputEmail.value = null
+        isUpdateOrDelete = false
+        saveOrUpdateButtonText.value = "Save"
+        clearAllOrDeleteButtonText.value = "Clear All"
+        /** Treat LiveData as an Event **/
+        statusMessage.value = Event("Subscriber Updated Successfully")
+    }
+
+    fun delete(subscriber: Subscriber) = viewModelScope.launch {
+        repository.delete(subscriber)
+        inputName.value = null
+        inputEmail.value = null
+        isUpdateOrDelete = false
+        saveOrUpdateButtonText.value = "Save"
+        clearAllOrDeleteButtonText.value = "Clear All"
+        /** Treat LiveData as an Event **/
+        statusMessage.value = Event("Subscriber Deleted Successfully")
+    }
+
+    fun clearAll()=viewModelScope.launch {
+        repository.deleteAll()
+        /** Treat LiveData as an Event **/
+        statusMessage.value = Event("All Subscriber Deleted Successfully")
+    }
+
+    fun initUpdateAndDelete(subscriber: Subscriber){
+        inputName.value = subscriber.name
+        inputEmail.value = subscriber.email
+        isUpdateOrDelete = true
+        subscriberToUpdateOrDelete = subscriber
+        saveOrUpdateButtonText.value = "Update"
+        clearAllOrDeleteButtonText.value = "Delete"
+
+    }
+
+    override fun removeOnPropertyChangedCallback(callback: Observable.OnPropertyChangedCallback?) {
+
+    }
+
+    override fun addOnPropertyChangedCallback(callback: Observable.OnPropertyChangedCallback?) {
+
+    }
+
+}
+```
+
+### MainActivity
+
+```kotlin
+package com.paigesoftware.roomdemo
+
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
+import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.paigesoftware.roomdemo.databinding.ActivityMainBinding
+import com.paigesoftware.roomdemo.db.*
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var subscriberViewModel: SubscriberViewModel
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
+        val dao: SubscriberDAO = SubscriberDatabase.getInstance(application).subscriberDAO
+        val repository = SubscriberRepository(dao)
+        val factory = SubscriberViewModelFactory(repository)
+        subscriberViewModel = ViewModelProvider(this, factory).get(SubscriberViewModel::class.java)
+        binding.subscriberViewModel = subscriberViewModel
+        binding.lifecycleOwner = this  //for LiveData Binding
+
+        initRecyclerView()
+
+        /** Treat LiveData as an Event **/
+        subscriberViewModel.message.observe(this, Observer {
+            it.getContentIfNotHandled()?.let {
+                Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+            }
+        })
+
+    }
+
+    private fun initRecyclerView() {
+        binding.subscriberRecyclerView.layoutManager = LinearLayoutManager(this)
+        displaySubscribersList()
+    }
+
+    private fun displaySubscribersList() {
+        subscriberViewModel.subscribers.observe(this, Observer {
+            Log.i("MYTAG", it.toString())
+            binding.subscriberRecyclerView.adapter = SubscriberRecyclerViewAdapter(it, { selectedItem: Subscriber -> listItemClicked(selectedItem)})
+        })
+    }
+
+    /** Click Event **/
+    private fun listItemClicked(subscriber: Subscriber) {
+        Toast.makeText(this, "selected name is ${subscriber.name}", Toast.LENGTH_LONG).show()
+        subscriberViewModel.initUpdateAndDelete(subscriber)
+    }
+
+}
+```

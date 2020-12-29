@@ -3,6 +3,7 @@ package com.paigesoftware.roomdemo.db
 import androidx.databinding.Bindable
 import androidx.databinding.Observable
 import androidx.lifecycle.*
+import com.paigesoftware.roomdemo.Event
 import kotlinx.coroutines.launch
 
 class SubscriberViewModel(private val repository: SubscriberRepository) : ViewModel(),Observable {
@@ -20,6 +21,11 @@ class SubscriberViewModel(private val repository: SubscriberRepository) : ViewMo
     val saveOrUpdateButtonText = MutableLiveData<String>()
     @Bindable
     val clearAllOrDeleteButtonText = MutableLiveData<String>()
+
+    /** Treat LiveData as an Event **/
+    private val statusMessage = MutableLiveData<Event<String>>()
+    val message: LiveData<Event<String>>
+    get() = statusMessage
 
     init {
         saveOrUpdateButtonText.value = "Save"
@@ -51,6 +57,8 @@ class SubscriberViewModel(private val repository: SubscriberRepository) : ViewMo
 
     fun insert(subscriber: Subscriber)= viewModelScope.launch {
         repository.insert(subscriber)
+        /** Treat LiveData as an Event **/
+        statusMessage.value = Event("Subscriber Inserted Successfully")
     }
 
     fun update(subscriber: Subscriber) = viewModelScope.launch {
@@ -60,7 +68,8 @@ class SubscriberViewModel(private val repository: SubscriberRepository) : ViewMo
         isUpdateOrDelete = false
         saveOrUpdateButtonText.value = "Save"
         clearAllOrDeleteButtonText.value = "Clear All"
-
+        /** Treat LiveData as an Event **/
+        statusMessage.value = Event("Subscriber Updated Successfully")
     }
 
     fun delete(subscriber: Subscriber) = viewModelScope.launch {
@@ -70,11 +79,14 @@ class SubscriberViewModel(private val repository: SubscriberRepository) : ViewMo
         isUpdateOrDelete = false
         saveOrUpdateButtonText.value = "Save"
         clearAllOrDeleteButtonText.value = "Clear All"
-
+        /** Treat LiveData as an Event **/
+        statusMessage.value = Event("Subscriber Deleted Successfully")
     }
 
     fun clearAll()=viewModelScope.launch {
         repository.deleteAll()
+        /** Treat LiveData as an Event **/
+        statusMessage.value = Event("All Subscriber Deleted Successfully")
     }
 
     fun initUpdateAndDelete(subscriber: Subscriber){
@@ -84,7 +96,6 @@ class SubscriberViewModel(private val repository: SubscriberRepository) : ViewMo
         subscriberToUpdateOrDelete = subscriber
         saveOrUpdateButtonText.value = "Update"
         clearAllOrDeleteButtonText.value = "Delete"
-
     }
 
 

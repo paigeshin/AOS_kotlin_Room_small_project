@@ -28,6 +28,14 @@ class MainActivity : AppCompatActivity() {
         binding.lifecycleOwner = this  //for LiveData Binding
 
         initRecyclerView()
+
+        /** Treat LiveData as an Event **/
+        subscriberViewModel.message.observe(this, Observer {
+            it.getContentIfNotHandled()?.let {
+                Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+            }
+        })
+
     }
 
     private fun initRecyclerView() {
