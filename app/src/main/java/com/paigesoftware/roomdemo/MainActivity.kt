@@ -2,9 +2,11 @@ package com.paigesoftware.roomdemo
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.paigesoftware.roomdemo.databinding.ActivityMainBinding
 import com.paigesoftware.roomdemo.db.*
 
@@ -24,12 +26,18 @@ class MainActivity : AppCompatActivity() {
         binding.subscriberViewModel = subscriberViewModel
         binding.lifecycleOwner = this  //for LiveData Binding
 
+        initRecyclerView()
+    }
 
+    private fun initRecyclerView() {
+        binding.subscriberRecyclerView.layoutManager = LinearLayoutManager(this)
+        displaySubscribersList()
     }
 
     private fun displaySubscribersList() {
         subscriberViewModel.subscribers.observe(this, Observer {
-
+            Log.i("MYTAG", it.toString())
+            binding.subscriberRecyclerView.adapter = SubscriberRecyclerViewAdapter(it)
         })
     }
 
