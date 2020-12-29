@@ -1,3 +1,7 @@
+```
+Patterns.EMAIL_ADDRESS.matcher(inputEmail.value!!).matches()
+```
+
 # Entity - table
 
 ```kotlin
@@ -927,4 +931,10 @@ class SubscriberViewModel(private val repository: SubscriberRepository) : ViewMo
     }
 
 }
+```
+
+### Email Input check
+
+```kotlin
+Patterns.EMAIL_ADDRESS.matcher(inputEmail.value!!).matches()
 ```
