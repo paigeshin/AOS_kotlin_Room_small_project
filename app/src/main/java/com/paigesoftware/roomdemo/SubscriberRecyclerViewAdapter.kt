@@ -8,9 +8,11 @@ import com.paigesoftware.roomdemo.databinding.ListItemBinding
 import com.paigesoftware.roomdemo.db.Subscriber
 
 class SubscriberRecyclerViewAdapter(
-    private val subscriberList: List<Subscriber>,
     private val clickListener: (Subscriber) -> Unit
     ): RecyclerView.Adapter<SubscriberRecyclerViewAdapter.SubscriberViewHolder>() {
+
+    private val subscriberList: ArrayList<Subscriber> = ArrayList()
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SubscriberViewHolder {
         val layoutInflater = LayoutInflater.from(parent.context)
         val binding: ListItemBinding = DataBindingUtil.inflate(layoutInflater, R.layout.list_item, parent, false)
@@ -23,6 +25,11 @@ class SubscriberRecyclerViewAdapter(
 
     override fun getItemCount(): Int {
         return subscriberList.size
+    }
+
+    fun setList(subscribers: List<Subscriber>) {
+        subscriberList.clear()
+        subscriberList.addAll(subscribers)
     }
 
     //view가 아니라 binding을 넘겨준다.
